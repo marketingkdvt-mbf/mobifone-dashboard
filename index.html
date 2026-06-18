@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Dashboard Sức Khỏe Kênh – MobiFone TP.HCM</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+<style>
+:root{color-scheme:light;--blue:#1d4ed8;--green:#059669;--red:#dc2626;--orange:#d97706;--purple:#7c3aed;--teal:#0891b2}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#f0f4f8;color:#1e293b;min-height:100vh}
+.header{background:linear-gradient(135deg,#1e3a8a 0%,#1d4ed8 60%,#0ea5e9 100%);color:white;padding:18px 24px 16px}
+.header h1{font-size:19px;font-weight:800;letter-spacing:-0.3px}
+.header p{font-size:12px;opacity:.8;margin-top:3px}
+.controls{display:flex;gap:10px;padding:12px 24px;background:white;border-bottom:1px solid #e2e8f0;flex-wrap:wrap;align-items:center;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.ctrl-group{display:flex;align-items:center;gap:6px}
+.ctrl-label{font-size:12px;color:#64748b;font-weight:600;white-space:nowrap}
+select{border:1.5px solid #cbd5e1;border-radius:7px;padding:5px 10px;font-size:13px;color:#1e293b;background:white;cursor:pointer;font-weight:500}
+select:focus{outline:2px solid #1d4ed8;border-color:#1d4ed8}
+.btn-refresh{margin-left:auto;background:#1d4ed8;color:white;border:none;border-radius:7px;padding:6px 14px;font-size:12px;cursor:pointer;font-weight:700;display:flex;align-items:center;gap:5px;transition:background .15s}
+.btn-refresh:hover{background:#1e40af}
+.badge-update{font-size:11px;color:#94a3b8;margin-left:8px}
+.spinner-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 24px;gap:14px}
+.spinner{width:36px;height:36px;border:4px solid #e2e8f0;border-top-color:#1d4ed8;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin-text{font-size:13px;color:#64748b}
+.main{padding:20px 24px;max-width:1200px;margin:0 auto}
+.sec-title{font-size:14px;font-weight:800;color:#1e3a8a;margin:20px 0 12px;padding-bottom:7px;border-bottom:2px solid #dbeafe;display:flex;align-items:center;gap:7px}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px;margin-bottom:20px}
+.kpi{background:white;border-radius:10px;padding:14px 14px 12px;box-shadow:0 1px 3px rgba(0,0,0,.07);border-top:3px solid #1d4ed8;position:relative;overflow:hidden}
+.kpi.g{border-top-color:#059669}.kpi.o{border-top-color:#d97706}.kpi.r{border-top-color:#dc2626}.kpi.p{border-top-color:#7c3aed}.kpi.t{border-top-color:#0891b2}.kpi.pink{border-top-color:#db2777}
+.kpi-lbl{font-size:10.5px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.kpi-val{font-size:24px;font-weight:900;color:#0f172a;margin:3px 0 2px;line-height:1}
+.kpi-sub{font-size:10.5px;color:#cbd5e1}
+.chart-row{display:grid;gap:12px;margin-bottom:20px}
+.chart-row-2{grid-template-columns:1fr 1fr}
+.chart-row-1{grid-template-columns:1fr}
+@media(max-width:680px){.chart-row-2{grid-template-columns:1fr}}
+.card{background:white;border-radius:10px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+.card-title{font-size:12px;font-weight:700;color:#475569;margin-bottom:10px}
+.chart-wrap{position:relative;height:210px}
+.posts-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+@media(max-width:680px){.posts-grid{grid-template-columns:1fr}}
+.post-item{display:flex;gap:8px;padding:7px 0;border-bottom:1px solid #f1f5f9;align-items:flex-start}
+.post-item:last-child{border-bottom:none}
+.rank{width:20px;height:20px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#64748b;flex-shrink:0;margin-top:1px}
+.rank.g1{background:#fef3c7;color:#b45309}.rank.g2{background:#f1f5f9;color:#475569}.rank.g3{background:#fef2f2;color:#991b1b}
+.post-body{flex:1;min-width:0}
+.post-msg{font-size:11.5px;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.post-meta{font-size:10.5px;color:#94a3b8;margin-top:1px}
+.metrics{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px}
+.m{font-size:10px;padding:1.5px 6px;border-radius:8px;font-weight:700}
+.m.v{background:#eff6ff;color:#1d4ed8}.m.l{background:#fef2f2;color:#dc2626}.m.c{background:#f0fdf4;color:#16a34a}.m.s{background:#fff7ed;color:#c2410c}.m.sv{background:#faf5ff;color:#7c3aed}.m.e{background:#fffbeb;color:#b45309}
+.tag{display:inline-block;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;margin:1px}
+.reco-card{background:white;border-radius:10px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,.07);margin-bottom:20px}
+.reco-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:14px}
+.reco-item{padding:13px;border-radius:8px;border-left:4px solid}
+.reco-item h4{font-size:12.5px;font-weight:800;margin-bottom:5px;color:#0f172a}
+.reco-item p{font-size:12px;color:#475569;line-height:1.55}
+.reco-item.blue{background:#eff6ff;border-color:#2563eb}.reco-item.green{background:#f0fdf4;border-color:#16a34a}.reco-item.orange{background:#fff7ed;border-color:#ea580c}.reco-item.purple{background:#faf5ff;border-color:#7c3aed}
+.alert-bar{background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:10px 14px;font-size:12px;color:#92400e;line-height:1.5;margin-bottom:14px}
+.channel-pill{display:inline-flex;align-items:center;gap:7px;background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:20px;padding:5px 14px;font-size:13px;color:#0369a1;font-weight:700;margin-bottom:16px}
+.cdot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.cdot.tk{background:#000}.cdot.fb{background:#1877f2}
+.info-bar{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:9px 14px;font-size:12px;color:#475569;display:flex;gap:18px;flex-wrap:wrap;margin-bottom:16px}
+.info-bar strong{color:#0f172a;font-weight:800}
+.hour-grid{display:flex;gap:2px;align-items:flex-end;height:64px}
+.h-bar{flex:1;background:#bfdbfe;border-radius:2px 2px 0 0;min-height:3px;cursor:pointer;transition:background .15s;position:relative}
+.h-bar:hover{background:#1d4ed8}
+.h-bar.best{background:#1d4ed8}
+.h-labels{display:flex;gap:2px}
+.h-lbl{flex:1;text-align:center;font-size:8.5px;color:#94a3b8;margin-top:3px}
+.dow-note{font-size:11px;color:#64748b;margin-top:8px;line-height:1.5}
+h3.top-hd{font-size:12.5px;font-weight:800;margin-bottom:10px}.h3.top-hd.good{color:#059669}.h3.top-hd.bad{color:#dc2626}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>📊 Dashboard Sức Khỏe Kênh Social – MobiFone TP.HCM</h1>
+  <p>Phân tích tình hình hoạt động TikTok &amp; Facebook Fanpage</p>
+</div>
+<div class="controls">
+  <div class="ctrl-group">
+    <span class="ctrl-label">📡 Kênh:</span>
+    <select id="chSel">
+      <option value="tiktok">🎵 TikTok MobiFone TP.HCM</option>
+      <option value="fb_tphcm">📘 Fanpage MobiFone TP.HCM</option>
+      <option value="fb_saigon">📘 MobiFone Saigon</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">📅 Giai đoạn:</span>
+    <select id="dSel">
+      <option value="7">7 ngày gần nhất</option>
+      <option value="14">14 ngày gần nhất</option>
+      <option value="30" selected>30 ngày gần nhất</option>
+      <option value="60">60 ngày gần nhất</option>
+      <option value="90">90 ngày gần nhất</option>
+    </select>
+  </div>
+  <button class="btn-refresh" onclick="render()">🔄 Làm mới</button>
+  <span class="badge-update" id="badgeDate">Dữ liệu: 19/04 – 17/06/2026</span>
+</div>
+<div id="app">
+  <div class="spinner-wrap"><div class="spinner"></div><div class="spin-text">Đang tải dữ liệu...</div></div>
+</div>
+
+<script>
+// ===== DATA =====
+const TK_DAILY=[{date:"2026-04-19",views:12801,pv:108,likes:151,comments:18,shares:39},{date:"2026-04-20",views:119144,pv:333,likes:797,comments:144,shares:264},{date:"2026-04-21",views:22952,pv:97,likes:197,comments:19,shares:46},{date:"2026-04-22",views:19262,pv:107,likes:127,comments:27,shares:54},{date:"2026-04-23",views:11409,pv:67,likes:115,comments:7,shares:26},{date:"2026-04-24",views:10322,pv:98,likes:86,comments:6,shares:17},{date:"2026-04-25",views:12198,pv:76,likes:120,comments:15,shares:7},{date:"2026-04-26",views:6661,pv:42,likes:68,comments:5,shares:15},{date:"2026-04-27",views:5366,pv:50,likes:61,comments:1,shares:8},{date:"2026-04-28",views:3800,pv:51,likes:32,comments:0,shares:8},{date:"2026-04-29",views:3796,pv:56,likes:43,comments:3,shares:6},{date:"2026-04-30",views:4334,pv:28,likes:41,comments:2,shares:12},{date:"2026-05-01",views:4287,pv:36,likes:39,comments:9,shares:7},{date:"2026-05-02",views:4189,pv:29,likes:39,comments:0,shares:5},{date:"2026-05-03",views:4138,pv:25,likes:48,comments:1,shares:8},{date:"2026-05-04",views:4439,pv:47,likes:60,comments:2,shares:15},{date:"2026-05-05",views:6111,pv:70,likes:134,comments:5,shares:28},{date:"2026-05-06",views:7202,pv:41,likes:105,comments:3,shares:23},{date:"2026-05-07",views:6855,pv:70,likes:86,comments:5,shares:29},{date:"2026-05-08",views:5469,pv:38,likes:68,comments:5,shares:14},{date:"2026-05-09",views:5272,pv:41,likes:73,comments:1,shares:13},{date:"2026-05-10",views:5798,pv:42,likes:55,comments:3,shares:13},{date:"2026-05-11",views:5217,pv:73,likes:70,comments:6,shares:20},{date:"2026-05-12",views:5271,pv:64,likes:75,comments:5,shares:16},{date:"2026-05-13",views:5712,pv:61,likes:68,comments:2,shares:16},{date:"2026-05-14",views:7835,pv:93,likes:119,comments:1,shares:28},{date:"2026-05-15",views:5911,pv:74,likes:75,comments:0,shares:15},{date:"2026-05-16",views:5466,pv:59,likes:64,comments:8,shares:8},{date:"2026-05-17",views:4569,pv:55,likes:66,comments:9,shares:12},{date:"2026-05-18",views:4663,pv:51,likes:55,comments:12,shares:14},{date:"2026-05-19",views:5255,pv:65,likes:76,comments:16,shares:13},{date:"2026-05-20",views:5167,pv:67,likes:57,comments:17,shares:13},{date:"2026-05-21",views:5456,pv:58,likes:68,comments:5,shares:7},{date:"2026-05-22",views:9668,pv:79,likes:114,comments:4,shares:11},{date:"2026-05-23",views:6151,pv:50,likes:75,comments:2,shares:14},{date:"2026-05-24",views:6616,pv:71,likes:70,comments:3,shares:7},{date:"2026-05-25",views:6065,pv:81,likes:75,comments:4,shares:16},{date:"2026-05-26",views:4990,pv:78,likes:64,comments:7,shares:11},{date:"2026-05-27",views:5283,pv:73,likes:67,comments:3,shares:13},{date:"2026-05-28",views:5244,pv:61,likes:69,comments:9,shares:19},{date:"2026-05-29",views:7342,pv:87,likes:110,comments:10,shares:24},{date:"2026-05-30",views:11366,pv:94,likes:130,comments:6,shares:28},{date:"2026-05-31",views:11255,pv:96,likes:140,comments:8,shares:21},{date:"2026-06-01",views:14186,pv:154,likes:191,comments:37,shares:30},{date:"2026-06-02",views:23675,pv:185,likes:305,comments:21,shares:72},{date:"2026-06-03",views:23169,pv:201,likes:262,comments:28,shares:62},{date:"2026-06-04",views:23466,pv:207,likes:339,comments:33,shares:75},{date:"2026-06-05",views:20853,pv:211,likes:281,comments:15,shares:58},{date:"2026-06-06",views:15557,pv:128,likes:203,comments:22,shares:31},{date:"2026-06-07",views:14861,pv:138,likes:186,comments:7,shares:38},{date:"2026-06-08",views:16898,pv:164,likes:227,comments:9,shares:59},{date:"2026-06-09",views:14956,pv:139,likes:206,comments:15,shares:42},{date:"2026-06-10",views:28677,pv:229,likes:458,comments:19,shares:112},{date:"2026-06-11",views:32597,pv:257,likes:520,comments:18,shares:130},{date:"2026-06-12",views:59337,pv:453,likes:888,comments:47,shares:251},{date:"2026-06-13",views:65613,pv:590,likes:1037,comments:71,shares:284},{date:"2026-06-14",views:74249,pv:547,likes:1073,comments:87,shares:286},{date:"2026-06-15",views:63814,pv:497,likes:898,comments:80,shares:190},{date:"2026-06-16",views:20542,pv:190,likes:266,comments:29,shares:39}];
+
+const TK_VIDEOS=[
+{id:"7624140726737128725",cap:"Dứt tình dứt nghĩa không dứt số – chuyển mạng MobiFone",views:295,likes:14,comments:2,shares:8,saves:1,date:"2026-04-02",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7624140726737128725",dur:25.1,wr:4.1,hour_vn:19,topic:"chuyển mạng"},
+{id:"7624515586139245844",cap:"Lướt TikTok hết data? 5G MobiFone giải cứu ngay",views:613,likes:20,comments:4,shares:9,saves:0,date:"2026-04-03",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7624515586139245844",dur:19.5,wr:6.4,hour_vn:19,topic:"gói cước"},
+{id:"7625591666090462484",cap:"Đừng bỏ số đẹp – Chuyển mạng giữ số về MobiFone 5G",views:1269,likes:16,comments:3,shares:3,saves:1,date:"2026-04-06",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7625591666090462484",dur:42.5,wr:1.5,hour_vn:18,topic:"chuyển mạng"},
+{id:"7625593948760771860",cap:"Lướt Tóp Tóp hết lag với gói MXH100 chỉ 100 cành",views:6489,likes:53,comments:5,shares:8,saves:13,date:"2026-04-07",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7625593948760771860",dur:21.6,wr:7.5,hour_vn:19,topic:"gói cước"},
+{id:"7626346871958670612",cap:"Thà tốn tiền không dối lòng – khách hàng SIM số đẹp cứng nhất năm",views:948,likes:22,comments:7,shares:7,saves:0,date:"2026-04-08",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7626346871958670612",dur:14.0,wr:8.6,hour_vn:18,topic:"sim số đẹp"},
+{id:"7626941273504566548",cap:"Cạn data xài FHCM – giao diện đổi khác bọt liền!",views:1251,likes:13,comments:0,shares:2,saves:0,date:"2026-04-10",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7626941273504566548",dur:0,wr:7.9,hour_vn:8,topic:"gói cước"},
+{id:"7627428416232508689",cap:"🚨 BẮT BUỘC xác thực thuê bao từ 15/04 – 3 cách làm nhanh",views:93958,likes:521,comments:113,shares:136,saves:166,date:"2026-04-11",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7627428416232508689",dur:30.2,wr:10.3,hour_vn:16,topic:"xác thực SIM"},
+{id:"7627813541684464917",cap:"🚨 Đừng để bị khóa SIM sau 15/4 – xác thực ngay tại nhà",views:303898,likes:4647,comments:299,shares:1488,saves:2335,date:"2026-04-12",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7627813541684464917",dur:0,wr:10.1,hour_vn:17,topic:"xác thực SIM"},
+{id:"7628093090204568853",cap:"Các trường hợp cần xác thực TTTB – kiểm tra ngay",views:24610,likes:166,comments:45,shares:30,saves:27,date:"2026-04-13",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7628093090204568853",dur:33.9,wr:9.9,hour_vn:11,topic:"xác thực SIM"},
+{id:"7628586903234792724",cap:"Chủ thuê bao MobiFone cần xác thực – làm ngay trên My MobiFone",views:5847,likes:50,comments:2,shares:8,saves:24,date:"2026-04-14",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7628586903234792724",dur:0,wr:11.6,hour_vn:19,topic:"xác thực SIM"},
+{id:"7628862508769545492",cap:"Đổi máy mới có thể mất SIM – cập nhật sinh trắc học ngay",views:19482,likes:110,comments:16,shares:23,saves:25,date:"2026-04-15",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7628862508769545492",dur:51.8,wr:5.3,hour_vn:13,topic:"xác thực SIM"},
+{id:"7629287761647815957",cap:"MobiFone đón tuổi 33 – hệ sinh thái công nghệ số toàn diện",views:1107,likes:15,comments:2,shares:7,saves:1,date:"2026-04-16",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7629287761647815957",dur:36.3,wr:4.1,hour_vn:16,topic:"cộng đồng"},
+{id:"7629575790069435668",cap:"Xác nhận SIM chính chủ trên VNeID cực dễ chỉ 1 phút",views:57541,likes:481,comments:45,shares:114,saves:183,date:"2026-04-17",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7629575790069435668",dur:0,wr:17.6,hour_vn:11,topic:"xác thực SIM"},
+{id:"7630471034029821204",cap:"Trầm cảm vì SIM không chính chủ? Giành lại chủ quyền ngay",views:205415,likes:1538,comments:216,shares:431,saves:264,date:"2026-04-19",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7630471034029821204",dur:52.3,wr:4.9,hour_vn:21,topic:"xác thực SIM"},
+{id:"7630853096746274069",cap:"Vi vu quốc tế dịp 30/4 – Roaming MobiFone không đổi SIM",views:965,likes:13,comments:1,shares:1,saves:0,date:"2026-04-20",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7630853096746274069",dur:0,wr:5.0,hour_vn:21,topic:"roaming"},
+{id:"7631506909073263892",cap:"Hướng dẫn kiểm tra thông tin thuê bao tránh SIM tắt ngúm",views:29258,likes:105,comments:13,shares:11,saves:23,date:"2026-04-22",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7631506909073263892",dur:15.0,wr:11.8,hour_vn:16,topic:"xác thực SIM"},
+{id:"7632312416990137621",cap:"Ông bà dùng điện thoại cục gạch xác thực thuê bao kiểu gì?",views:20034,likes:122,comments:20,shares:12,saves:22,date:"2026-04-24",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7632312416990137621",dur:48.6,wr:4.5,hour_vn:20,topic:"xác thực SIM"},
+{id:"7632608117754219796",cap:"Vi vu xuất ngoại dịp lễ – Roaming MobiFone cân trọn quốc tế",views:2796,likes:46,comments:5,shares:7,saves:9,date:"2026-04-25",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7632608117754219796",dur:52.0,wr:1.6,hour_vn:15,topic:"roaming"},
+{id:"7633396456874986772",cap:"Gọi điện hỏi thăm người thân CAND thả ga – gói ANT79",views:1716,likes:18,comments:2,shares:0,saves:1,date:"2026-04-27",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7633396456874986772",dur:30.7,wr:8.9,hour_vn:18,topic:"gói cước"},
+{id:"7633997542287625493",cap:"Nghỉ lễ 30/4 – MobiFone tặng 50% giá trị thẻ nạp",views:616,likes:7,comments:1,shares:1,saves:0,date:"2026-04-29",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7633997542287625493",dur:0,wr:14.9,hour_vn:9,topic:"khuyến mãi"},
+{id:"7632611093428423957",cap:"Tạm biệt mạng lag với WiFi MobiFone 6WIFI1 – 100k/tháng",views:1114,likes:10,comments:1,shares:3,saves:0,date:"2026-05-03",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7632611093428423957",dur:40.5,wr:3.1,hour_vn:16,topic:"internet"},
+{id:"7635984144660581652",cap:"Mẹo check SIM MobiFone đã chuẩn hóa chưa – soạn TTTB 1414",views:15815,likes:159,comments:13,shares:26,saves:30,date:"2026-05-04",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7635984144660581652",dur:22.1,wr:13.5,hour_vn:19,topic:"xác thực SIM"},
+{id:"7635986645778550037",cap:"Lướt mạng mỏi tay với 1.000GB từ gói FHCM",views:735,likes:5,comments:1,shares:2,saves:0,date:"2026-05-05",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7635986645778550037",dur:36.9,wr:1.6,hour_vn:17,topic:"gói cước"},
+{id:"7635993244446313749",cap:"Đã chuẩn hóa nhưng chưa xong? Đừng quên bước Xác nhận VNeID",views:6052,likes:33,comments:9,shares:4,saves:4,date:"2026-05-06",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7635993244446313749",dur:42.8,wr:8.0,hour_vn:18,topic:"xác thực SIM"},
+{id:"7637080848612789525",cap:"Định nghĩa Content ở công ty: Con=Con sen, Tent=Tối đen",views:1568,likes:18,comments:0,shares:5,saves:0,date:"2026-05-07",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7637080848612789525",dur:29.4,wr:5.7,hour_vn:16,topic:"nội bộ"},
+{id:"7637090786907278613",cap:"Tại sao số điện thoại chưa xuất hiện trên VNeID? Giải mã ngay",views:12562,likes:87,comments:14,shares:7,saves:17,date:"2026-05-09",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7637090786907278613",dur:35.1,wr:7.5,hour_vn:18,topic:"xác thực SIM"},
+{id:"7638593496525425941",cap:"Khách ủng hộ bọn em diii – KPI SIM MobiFone",views:1566,likes:23,comments:3,shares:7,saves:2,date:"2026-05-11",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7638593496525425941",dur:7.4,wr:21.0,hour_vn:18,topic:"nội bộ"},
+{id:"7638950584648731925",cap:"3 phút chuẩn hóa thông tin thuê bao tại nhà trên My MobiFone",views:3774,likes:34,comments:6,shares:15,saves:11,date:"2026-05-12",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7638950584648731925",dur:66.3,wr:4.7,hour_vn:17,topic:"xác thực SIM"},
+{id:"7639344394365291797",cap:"34 triệu SIM sắp bị khóa nếu không làm điều này trước 15/6",views:19772,likes:151,comments:39,shares:11,saves:30,date:"2026-05-13",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7639344394365291797",dur:42.8,wr:4.3,hour_vn:18,topic:"xác thực SIM"},
+{id:"7639720086722465044",cap:"SIM của bạn đã chuẩn chưa? Kiểm tra và xác thực ngay",views:42946,likes:493,comments:44,shares:95,saves:224,date:"2026-05-14",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7639720086722465044",dur:0,wr:19.1,hour_vn:19,topic:"xác thực SIM"},
+{id:"7640054594114014484",cap:"Top 3 số đuôi điện thoại đón tài lộc may mắn",views:430,likes:4,comments:0,shares:0,saves:0,date:"2026-05-15",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7640054594114014484",dur:44.7,wr:2.7,hour_vn:18,topic:"phong thủy"},
+{id:"7640482760943045908",cap:"World Cup 2026 – xem trọn 104 trận trên VTVgo MobiFone",views:1833,likes:16,comments:1,shares:0,saves:1,date:"2026-05-16",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7640482760943045908",dur:150.1,wr:0.3,hour_vn:20,topic:"World Cup"},
+{id:"7640716578367081749",cap:"Gói cước MobiFone nào hot nhất hiện nay?",views:824,likes:4,comments:0,shares:9,saves:2,date:"2026-05-17",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7640716578367081749",dur:112.1,wr:1.0,hour_vn:11,topic:"gói cước"},
+{id:"7641038320595668244",cap:"MobiFone TP.HCM triển khai điểm lưu động hỗ trợ xác thực thuê bao",views:7968,likes:68,comments:2,shares:8,saves:9,date:"2026-05-18",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7641038320595668244",dur:55.1,wr:3.2,hour_vn:16,topic:"xác thực SIM"},
+{id:"7641065697417727252",cap:"Chạy thị trường xuyên màn đêm – gói D10: 10k có ngay 6GB",views:1708,likes:24,comments:2,shares:7,saves:0,date:"2026-05-19",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7641065697417727252",dur:11.3,wr:19.6,hour_vn:19,topic:"gói cước"},
+{id:"7641126410500820245",cap:"Lỡ tay xác nhận nhầm trên VNeID? Cách xử lý siêu nhanh",views:16212,likes:163,comments:21,shares:37,saves:54,date:"2026-05-20",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7641126410500820245",dur:41.6,wr:7.5,hour_vn:16,topic:"xác thực SIM"},
+{id:"7642287038909173012",cap:"Từ 22/5 MobiFone chặn 1 chiều với SIM không chính chủ trên VNeID",views:53294,likes:372,comments:79,shares:55,saves:63,date:"2026-05-21",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7642287038909173012",dur:25.9,wr:19.0,hour_vn:17,topic:"xác thực SIM"},
+{id:"7642636217388993812",cap:"Cảnh báo: đóng cước Internet chỉ qua kênh chính thức MobiFone",views:1531,likes:20,comments:0,shares:2,saves:1,date:"2026-05-22",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7642636217388993812",dur:24.9,wr:6.4,hour_vn:15,topic:"cảnh báo"},
+{id:"7643077471797071125",cap:"Bạn hỏi – MobiFone trả lời: Giải đáp xác thực thuê bao",views:1087,likes:12,comments:1,shares:0,saves:2,date:"2026-05-23",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7643077471797071125",dur:0,wr:12.1,hour_vn:20,topic:"xác thực SIM"},
+{id:"7643449053774187796",cap:"Sếp deadline clip gói M125M: 11GB/tháng hời lắm!",views:1688,likes:20,comments:1,shares:1,saves:1,date:"2026-05-24",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7643449053774187796",dur:14.9,wr:9.3,hour_vn:20,topic:"gói cước"},
+{id:"7643652278628486420",cap:"Bắt trọn World Cup 2026 với VTVgo dành riêng cho thuê bao MobiFone",views:5795,likes:24,comments:0,shares:4,saves:4,date:"2026-05-25",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7643652278628486420",dur:98.2,wr:1.3,hour_vn:19,topic:"World Cup"},
+{id:"7643741139090066709",cap:"3 phút chuẩn hóa SIM – đổi lấy an toàn tuyệt đối",views:2269,likes:16,comments:7,shares:0,saves:2,date:"2026-05-26",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7643741139090066709",dur:40.6,wr:4.0,hour_vn:16,topic:"xác thực SIM"},
+{id:"7644527882970074389",cap:"Lướt mạng 24/7 sợ cạn data? Bật mí TK219 cân trọn giải trí",views:2344,likes:20,comments:4,shares:5,saves:1,date:"2026-05-27",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7644527882970074389",dur:25.2,wr:6.6,hour_vn:18,topic:"gói cước"},
+{id:"7644844550862785812",cap:"🔥 Ở nước ngoài vẫn chuẩn hoá SIM qua NFC – không cần VNeID!",views:167317,likes:1936,comments:191,shares:806,saves:719,date:"2026-05-28",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7644844550862785812",dur:68.5,wr:5.8,hour_vn:14,topic:"xác thực SIM"},
+{id:"7644865339020299540",cap:"MobiFone tặng SIM định danh cho sĩ tử mùa thi TP.HCM",views:771,likes:5,comments:2,shares:0,saves:1,date:"2026-05-29",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7644865339020299540",dur:49.6,wr:0.9,hour_vn:11,topic:"cộng đồng"},
+{id:"7645632360817397013",cap:"Tin nhắn crush load muộn vì cạn data? Cứu ngay với D10!",views:2850,likes:23,comments:1,shares:3,saves:2,date:"2026-05-30",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7645632360817397013",dur:10.8,wr:15.7,hour_vn:17,topic:"gói cước"},
+{id:"7646366954948742420",cap:"Lướt mạng mượt, cày phim, chơi game cùng Internet MobiFone",views:1425,likes:10,comments:0,shares:1,saves:0,date:"2026-06-01",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7646366954948742420",dur:7.4,wr:10.5,hour_vn:18,topic:"internet"},
+{id:"7646368093266136341",cap:"Xác thực thuê bao – nhận ngay ưu đãi nạp thẻ chiết khấu hời",views:11675,likes:113,comments:8,shares:6,saves:9,date:"2026-06-03",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7646368093266136341",dur:18.3,wr:11.8,hour_vn:11,topic:"xác thực SIM"},
+{id:"7647810343938362645",cap:"9GB data/ngày thoải mái giải trí – gói TK219",views:2231,likes:21,comments:0,shares:2,saves:1,date:"2026-06-05",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7647810343938362645",dur:8.5,wr:13.0,hour_vn:19,topic:"gói cước"},
+{id:"7648853977194368277",cap:"Cày 104 trận World Cup Full HD + BLV Tiếng Việt không quảng cáo",views:2342,likes:16,comments:6,shares:3,saves:1,date:"2026-06-08",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7648853977194368277",dur:30.8,wr:3.1,hour_vn:19,topic:"World Cup"},
+{id:"7648947220133252373",cap:"Data ngập tràn cho team HCM – gói FHCM MobiFone",views:4508,likes:47,comments:4,shares:1,saves:6,date:"2026-06-10",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7648947220133252373",dur:22.8,wr:8.2,hour_vn:18,topic:"gói cước"},
+{id:"7650349538233896213",cap:"Đếm ngược 15/06 – Hạn chót chuẩn hóa SIM, tránh bị khóa 1 chiều",views:19574,likes:136,comments:39,shares:36,saves:17,date:"2026-06-12",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7650349538233896213",dur:60.4,wr:2.6,hour_vn:19,topic:"xác thực SIM"},
+{id:"7651469890007698709",cap:"Thông tư 08/2026: SIM bị khóa nếu chưa xác thực – làm ngay!",views:30360,likes:290,comments:48,shares:27,saves:50,date:"2026-06-15",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7651469890007698709",dur:41.8,wr:5.3,hour_vn:11,topic:"xác thực SIM"},
+{id:"7652177762601405717",cap:"Chọn đúng số hợp mệnh – hổ mọc thêm cánh thu hút may mắn",views:165,likes:1,comments:0,shares:0,saves:0,date:"2026-06-17",url:"https://www.tiktok.com/@mobifonetp.hcm/video/7652177762601405717",dur:40.7,wr:0.6,hour_vn:11,topic:"phong thủy"}];
+
+const FB_TPHCM=[
+// === Bài đăng cũ (23/03 – 17/05) ===
+{msg:"Làm định danh ngay - nhận SIM liền tay – ưu đãi hòa mạng KC90CC",date:"2026-03-23",reactions:226,comments:8,shares:18,topic:"xác thực SIM"},
+{msg:"Sắm SIM MobiFone mới? Không cần CCCD vật lý, đã có VNeID",date:"2026-03-24",reactions:16,comments:2,shares:6,topic:"xác thực SIM"},
+{msg:"MobiFone đồng hành cùng bạn trên mọi hành trình quốc tế – Roaming",date:"2026-03-25",reactions:18,comments:0,shares:0,topic:"roaming"},
+{msg:"Làm việc từ xa linh hoạt – Không lo gián đoạn kết nối cùng MobiFone",date:"2026-03-26",reactions:18,comments:4,shares:3,topic:"gói cước"},
+{msg:"MobiFone TP. HCM triển khai thử nghiệm dịch vụ Đại lý thanh toán",date:"2026-03-27",reactions:11,comments:0,shares:2,topic:"cộng đồng"},
+{msg:"Công ty CP Thanh toán số MobiFone MDP chính thức ra mắt",date:"2026-03-28",reactions:23,comments:21,shares:1,topic:"cộng đồng"},
+{msg:"MobiFone đồng hành chương trình Hội tụ sức trẻ và khát vọng",date:"2026-03-28",reactions:21,comments:1,shares:2,topic:"cộng đồng"},
+{msg:"MobiFone tiếp sức sĩ tử THPT Phước Long: Định danh nhanh chóng",date:"2026-03-30",reactions:16,comments:0,shares:0,topic:"xác thực SIM"},
+{msg:"MobiFone TP.HCM đang tiến hành xử lý vụ việc – inbox để biết thêm",date:"2026-04-01",reactions:51,comments:0,shares:1,topic:"khác"},
+{msg:"(Bài không có nội dung text)",date:"2026-04-01",reactions:7,comments:0,shares:0,topic:"khác"},
+{msg:"Thay đổi hình thức thanh toán cước Ủy nhiệm thu UNT từ 01/04/2026",date:"2026-04-02",reactions:14,comments:0,shares:0,topic:"thông báo"},
+{msg:"Cạn data, rớt mạng? Chỉ 135 cành/tháng ẵm trọn 7GB/ngày gói TK135",date:"2026-04-03",reactions:47,comments:7,shares:3,topic:"gói cước"},
+{msg:"Số đẹp đang dùng – Đổi mạng giữ số ngại gì không thử MobiFone",date:"2026-04-06",reactions:19,comments:1,shares:3,topic:"chuyển mạng"},
+{msg:"Hướng dẫn xác thực thông tin thuê bao nhanh chóng theo Thông tư 08",date:"2026-04-07",reactions:48,comments:4,shares:10,topic:"xác thực SIM"},
+{msg:"MobiFone và Techcombank ký kết hợp tác: Kiến tạo hệ sinh thái số",date:"2026-04-08",reactions:39,comments:1,shares:2,topic:"cộng đồng"},
+{msg:"Mạng đang giật lag mà đổi sang xài wifi MobiFone thì N___",date:"2026-04-09",reactions:25,comments:14,shares:1,topic:"internet"},
+{msg:"Bảo vệ thuê bao của bạn – xác thực thông tin ngay trên My MobiFone",date:"2026-04-10",reactions:92,comments:10,shares:58,topic:"xác thực SIM"},
+{msg:"Giải cứu mạng giật lag với MXH100 – nâng cấp trải nghiệm mạng",date:"2026-04-10",reactions:24,comments:0,shares:0,topic:"gói cước"},
+{msg:"MobiFone x 1Creators YeaH1 – Bước ngoặt mới cho Creator Economy VN",date:"2026-04-11",reactions:37,comments:0,shares:0,topic:"cộng đồng"},
+{msg:"Các phương thức xác thực thông tin thuê bao bạn cần biết Thông tư 08",date:"2026-04-12",reactions:21,comments:3,shares:2,topic:"xác thực SIM"},
+{msg:"Các trường hợp cần xác thực thông tin thuê bao theo Thông tư 08",date:"2026-04-13",reactions:53,comments:4,shares:18,topic:"xác thực SIM"},
+{msg:"Các bước xác thực thuê bao trên My MobiFone – từ 15/4/2026",date:"2026-04-14",reactions:60,comments:8,shares:30,topic:"xác thực SIM"},
+{msg:"Chính thức từ hôm nay: Tự xác thực SIM chính chủ qua VNeID",date:"2026-04-15",reactions:151,comments:16,shares:30,topic:"xác thực SIM"},
+{msg:"🎂 MobiFone mừng tuổi 33 – Ưu đãi nửa giá cho khách hàng",date:"2026-04-16",reactions:10,comments:0,shares:2,topic:"khuyến mãi"},
+{msg:"Kiểm tra thông tin thuê bao: Soạn TTTB gửi 1414",date:"2026-04-17",reactions:19,comments:2,shares:1,topic:"xác thực SIM"},
+{msg:"Dùng SIM người khác đứng tên – làm sao xác thực chính chủ?",date:"2026-04-20",reactions:38,comments:4,shares:4,topic:"xác thực SIM"},
+{msg:"2 phút chuẩn hóa - X2 ưu đãi từ MobiFone",date:"2026-04-22",reactions:6,comments:0,shares:0,topic:"xác thực SIM"},
+{msg:"Lễ này check-in Trung Quốc – Roaming MobiFone không lo gián đoạn",date:"2026-04-23",reactions:7,comments:0,shares:1,topic:"roaming"},
+{msg:"MobiFone được vinh danh Nhà cung cấp băng thông rộng di động tiêu biểu",date:"2026-04-24",reactions:5,comments:0,shares:0,topic:"cộng đồng"},
+{msg:"3 giây check ngay SIM đã chuẩn chưa – soạn TTTB 1414",date:"2026-04-25",reactions:38,comments:7,shares:11,topic:"xác thực SIM"},
+{msg:"Dù ai đi ngược về xuôi – Nhớ ngày Giỗ Tổ mùng mười tháng ba",date:"2026-04-26",reactions:15,comments:0,shares:0,topic:"cộng đồng"},
+{msg:"Đặc quyền người thân lực lượng CAND – gói cước ANT79 MobiFone",date:"2026-04-28",reactions:50,comments:2,shares:4,topic:"gói cước"},
+{msg:"Sắc xanh MobiFone đổ bộ Phường Cầu Kiệu: Chuẩn hóa liền tay",date:"2026-04-28",reactions:54,comments:5,shares:0,topic:"xác thực SIM"},
+{msg:"Chào Đại Lễ – Tặng 50% siêu mê từ MobiFone dịp 30/4-1/5",date:"2026-04-29",reactions:10,comments:0,shares:1,topic:"khuyến mãi"},
+{msg:"MobiFone đồng hành cùng người dân Xã Nhà Bè xác thực thuê bao",date:"2026-04-29",reactions:17,comments:0,shares:0,topic:"xác thực SIM"},
+{msg:"Vi vu đại lễ – Sóng khỏe mạng mượt cùng MobiFone dịp nghỉ lễ",date:"2026-04-29",reactions:48,comments:0,shares:4,topic:"cộng đồng"},
+{msg:"Mừng Đại lễ 30/4 – Vi vu nghỉ lễ cùng gói data MobiFone",date:"2026-04-30",reactions:18,comments:0,shares:0,topic:"cộng đồng"},
+{msg:"eSIM du lịch, data toàn cầu, giá cả địa phương – MobiFone eSIM",date:"2026-05-01",reactions:10,comments:0,shares:1,topic:"roaming"},
+{msg:"Nghỉ lễ đừng quên đăng ký gói cước data và xác thực thông tin thuê bao",date:"2026-05-01",reactions:18,comments:0,shares:1,topic:"gói cước"},
+{msg:"Hỗ trợ xác thực thuê bao và tặng SIM tại Xã Nhà Bè",date:"2026-05-04",reactions:54,comments:7,shares:4,topic:"xác thực SIM"},
+{msg:"MobiFone túc trực tại Phường Tân Hưng hỗ trợ xác thực",date:"2026-05-05",reactions:35,comments:0,shares:0,topic:"xác thực SIM"},
+{msg:"Internet MobiFone hộ gia đình mê – 6WIFI1 hơn 100k/tháng",date:"2026-05-06",reactions:15,comments:2,shares:3,topic:"internet"},
+{msg:"TẶNG SIM định danh cho học sinh chuyển cấp tại Phường Thủ Đức",date:"2026-05-07",reactions:21,comments:3,shares:0,topic:"xác thực SIM"},
+{msg:"Đã chuẩn hóa nhưng chưa xong? Đừng quên bước Xác nhận trên VNeID",date:"2026-05-07",reactions:23,comments:0,shares:5,topic:"xác thực SIM"},
+{msg:"POV: Fanpage MobiFone TP.HCM được vẽ lại bằng những bút sáp màu",date:"2026-05-08",reactions:49,comments:1,shares:0,topic:"khác"},
+{msg:"Tin nóng sáng 10/5 MobiFone đồng loạt ra quân tiếp sức Tháng công nhân",date:"2026-05-10",reactions:46,comments:2,shares:2,topic:"cộng đồng"},
+{msg:"Tại sao số điện thoại của bạn chưa xuất hiện trên VNeID?",date:"2026-05-11",reactions:39,comments:2,shares:3,topic:"xác thực SIM"},
+{msg:"MobiFone TP.HCM & Phường Tam Bình ký kết thúc đẩy Chuyển đổi số",date:"2026-05-11",reactions:13,comments:1,shares:0,topic:"cộng đồng"},
+{msg:"MobiFone đồng hành cùng học sinh TT GDTX Thủ Đức hướng nghiệp",date:"2026-05-12",reactions:39,comments:3,shares:0,topic:"cộng đồng"},
+{msg:"Giải mã bí ẩn của Sếp... Sếp đang dùng gói cước TK219",date:"2026-05-13",reactions:17,comments:1,shares:0,topic:"gói cước"},
+{msg:"Chuyển nhà sang My MobiFone – Quản lý nhóm cực tiện lợi từ 13/05",date:"2026-05-14",reactions:20,comments:2,shares:2,topic:"xác thực SIM"},
+{msg:"📣 Bảo vệ SIM của bạn – xác thực thuê bao ngay hôm nay!",date:"2026-05-14",reactions:259,comments:46,shares:859,topic:"xác thực SIM"},
+{msg:"🎯 Tổng đài di động Cloud Contact Center – giải pháp doanh nghiệp",date:"2026-05-15",reactions:23,comments:1,shares:0,topic:"gói cước"},
+{msg:"Từ 15/5 hàng chục triệu thuê bao MobiFone xem World Cup trên VTVgo",date:"2026-05-15",reactions:335,comments:13,shares:71,topic:"World Cup"},
+{msg:"34 triệu SIM sắp bị khóa nếu không làm điều này trước 15/6",date:"2026-05-16",reactions:24,comments:3,shares:8,topic:"xác thực SIM"},
+{msg:"Các khách hàng tại Phường Linh Xuân ghé điểm lưu động xác thực thuê bao",date:"2026-05-17",reactions:10,comments:1,shares:0,topic:"xác thực SIM"},
+// === Bài đăng hiện tại (19/05 – 17/06) ===
+{msg:"[MINIGAME] Đoán số trận hay, nhận quà liền tay – World Cup 2026",date:"2026-06-10",reactions:347,comments:378,shares:397,topic:"minigame"},
+{msg:"⚽ Cháy trọn đam mê World Cup 2026 cùng gói VIP VTVgo từ MobiFone",date:"2026-05-29",reactions:62,comments:79,shares:3,topic:"World Cup"},
+{msg:"💙 MobiFone TP.HCM đồng hành cùng 6.000 công nhân tại KCX Tân Bình",date:"2026-06-04",reactions:49,comments:7,shares:3,topic:"cộng đồng"},
+{msg:"🚨 Thông báo quan trọng: Chặn liên lạc 1 chiều từ 22/5",date:"2026-05-21",reactions:79,comments:3,shares:19,topic:"xác thực SIM"},
+{msg:"🚨 Chỉ còn 1 ngày để xác thực thông tin thuê bao!",date:"2026-06-14",reactions:38,comments:3,shares:9,topic:"xác thực SIM"},
+{msg:"🚨 Cảnh báo khẩn: Chỉ còn 8 ngày đến 15/06 tránh bị tạm khóa SIM",date:"2026-06-07",reactions:41,comments:1,shares:1,topic:"xác thực SIM"},
+{msg:"Xác thực thông tin thuê bao – nhận ngay ưu đãi nạp thẻ chiết khấu",date:"2026-06-03",reactions:33,comments:2,shares:2,topic:"xác thực SIM"},
+{msg:"Ét o ét SIM chưa chính chủ? Chạm NFC một cái, xong việc ngay!",date:"2026-05-30",reactions:39,comments:3,shares:14,topic:"xác thực SIM"},
+{msg:"🏆 Đặc quyền thuê bao MobiFone: Thu trọn World Cup 2026",date:"2026-05-25",reactions:28,comments:0,shares:6,topic:"World Cup"},
+{msg:"Lỡ tay xác nhận nhầm trên VNeID? Bình tĩnh – cách xử lý nhanh",date:"2026-05-19",reactions:26,comments:0,shares:7,topic:"xác thực SIM"},
+{msg:"Check thông tin thuê bao chỉ với 1 giây qua NFC",date:"2026-05-23",reactions:26,comments:0,shares:1,topic:"xác thực SIM"},
+{msg:"Tìm đâu ra chỗ cày full 104 trận World Cup HD + BLV Tiếng Việt",date:"2026-06-08",reactions:25,comments:1,shares:4,topic:"World Cup"},
+{msg:"🚀 Xác thực 1 phút – Chuẩn hóa SIM siêu tốc cùng NFC!",date:"2026-05-26",reactions:25,comments:1,shares:9,topic:"xác thực SIM"},
+{msg:"🎉 CÔNG BỐ KẾT QUẢ MINIGAME World Cup",date:"2026-06-16",reactions:24,comments:11,shares:3,topic:"minigame"},
+{msg:"📣 Không truy cập được VNeID? Giải pháp xác thực qua NFC",date:"2026-05-21",reactions:10,comments:0,shares:8,topic:"xác thực SIM"},
+{msg:"🚨 Từ 15/6, hàng triệu thuê bao bị khóa 1 chiều",date:"2026-06-15",reactions:18,comments:1,shares:2,topic:"xác thực SIM"},
+{msg:"🎉 Không khí sôi động tại Booth MobiFone mùa World Cup!",date:"2026-06-13",reactions:14,comments:0,shares:4,topic:"World Cup"},
+{msg:"⚽ Quà nóng trao tay – Sẵn sàng cháy cùng World Cup 2026!",date:"2026-06-12",reactions:14,comments:1,shares:2,topic:"World Cup"},
+{msg:"Mất vỏn vẹn 3 phút để đổi lấy sự an toàn tuyệt đối",date:"2026-06-11",reactions:15,comments:0,shares:2,topic:"xác thực SIM"},
+{msg:"💙 Gỡ rối Chuẩn hóa thông tin – có MobiFone TP.HCM hỗ trợ",date:"2026-06-09",reactions:12,comments:0,shares:6,topic:"xác thực SIM"},
+{msg:"Lướt mạng 24/7 sợ cạn data? Bật mí TK219",date:"2026-06-06",reactions:16,comments:0,shares:0,topic:"gói cước"},
+{msg:"⚽ Khởi động mùa bóng – Bơm nóng 50% giá trị thẻ nạp",date:"2026-06-01",reactions:8,comments:0,shares:0,topic:"World Cup"},
+{msg:"🔮 TOP bộ số đuôi điện thoại hút tài lộc",date:"2026-05-28",reactions:12,comments:0,shares:2,topic:"phong thủy"},
+{msg:"📣 Người MobiFone dùng gói nào? Bật mí gói cước S16",date:"2026-05-20",reactions:15,comments:0,shares:1,topic:"gói cước"},
+{msg:"⚽ Săn vé Bắc Mỹ – Roaming thả ga mùa World Cup 2026!",date:"2026-06-05",reactions:6,comments:0,shares:0,topic:"World Cup"},
+{msg:"🚀 Chinh phục Level mới trong sự nghiệp cùng MobiFone!",date:"2026-05-27",reactions:6,comments:0,shares:1,topic:"gói cước"},
+{msg:"Gói cước MXH100 – Bao trọn data mạng xã hội",date:"2026-05-22",reactions:9,comments:0,shares:0,topic:"gói cước"},
+{msg:"Theo nhịp bóng lăn – dự đoán World Cup, rinh iPhone 17 Pro Max!",date:"2026-06-17",reactions:3,comments:0,shares:0,topic:"World Cup"},
+{msg:"(Bài không có nội dung text)",date:"2026-05-19",reactions:6,comments:0,shares:0,topic:"khác"}];
+
+const FB_SAIGON=[
+// === Bài đăng cũ (03/04 – 17/05) ===
+{msg:"Cạn data, rớt mạng lúc đang cuốn? Chỉ 135 cành/tháng gói TK135",date:"2026-04-03",reactions:6,comments:0,shares:0,topic:"gói cước"},
+{msg:"MobiFone TP. HCM triển khai thử nghiệm Đại lý thanh toán",date:"2026-04-03",reactions:6,comments:0,shares:0,topic:"cộng đồng"},
+{msg:"(Bài không có nội dung text)",date:"2026-04-09",reactions:1,comments:0,shares:0,topic:"khác"},
+{msg:"TỪ 15/4/2026: XÁC THỰC THÔNG TIN THUÊ BAO NHANH CHÓNG CÙNG MY MOBIFONE",date:"2026-04-10",reactions:22,comments:3,shares:22,topic:"xác thực SIM"},
+{msg:"Số đẹp đang dùng – Đổi mạng giữ số MobiFone ngại gì không thử",date:"2026-04-06",reactions:4,comments:0,shares:0,topic:"chuyển mạng"},
+{msg:"MobiFone mừng tuổi 33 – Thả ga ưu đãi siêu khủng",date:"2026-04-16",reactions:2,comments:0,shares:0,topic:"khuyến mãi"},
+{msg:"Các bước xác thực thuê bao trên My MobiFone từ 15/4/2026",date:"2026-04-15",reactions:10,comments:1,shares:1,topic:"xác thực SIM"},
+{msg:"VI VU NƯỚC NGOÀI DỊP LỄ – CHUYỂN VÙNG QUỐC TẾ NGAY, CHẲNG LO MẤT KẾT NỐI",date:"2026-04-25",reactions:19,comments:5,shares:4,topic:"roaming"},
+{msg:"ĐỪNG ĐỂ MẤT KẾT NỐI CHỈ VÌ QUÊN BƯỚC NÀY – chuẩn hóa thông tin",date:"2026-04-27",reactions:6,comments:0,shares:0,topic:"xác thực SIM"},
+{msg:"MobiFone phủ sóng toàn diện – Tự hào đón Đại lễ 30/4",date:"2026-04-28",reactions:17,comments:0,shares:1,topic:"cộng đồng"},
+{msg:"MobiFone đến tận nơi – Hỗ trợ chuẩn hóa thông tin tại Phường Cầu Kiệu",date:"2026-04-28",reactions:10,comments:2,shares:0,topic:"xác thực SIM"},
+{msg:"DEAL KHỦNG CHÀO LỄ – NẠP LÀ TẶNG 50% TỪ MOBIFONE",date:"2026-04-29",reactions:6,comments:0,shares:0,topic:"khuyến mãi"},
+{msg:"MobiFone đồng hành cùng người dân Xã Nhà Bè xác thực thuê bao SIM rác",date:"2026-04-29",reactions:10,comments:2,shares:0,topic:"xác thực SIM"},
+{msg:"Góc giải đáp: Dùng điện thoại phổ thông xác thực sinh trắc học kiểu gì?",date:"2026-04-30",reactions:14,comments:0,shares:1,topic:"xác thực SIM"},
+{msg:"Bạn vừa hạ cánh... Kết nối ngay – Roaming MobiFone không cần SIM sân bay",date:"2026-05-01",reactions:5,comments:0,shares:0,topic:"roaming"},
+{msg:"CHUẨN HÓA THÔNG TIN – NHẬN ƯU ĐÃI XỊN trên app My MobiFone",date:"2026-05-01",reactions:5,comments:0,shares:0,topic:"xác thực SIM"},
+{msg:"MOBIFONE ĐỒNG HÀNH CÙNG XÃ NHÀ BÈ CHUNG TAY HẠN CHẾ SIM RÁC",date:"2026-05-04",reactions:18,comments:3,shares:2,topic:"xác thực SIM"},
+{msg:"Ngay lúc này, MobiFone túc trực hỗ trợ bà con xác minh tại CA P. Tân Hưng",date:"2026-05-05",reactions:26,comments:1,shares:0,topic:"xác thực SIM"},
+{msg:"NÓNG Tiếp nối hành trình đến từng phường/xã hỗ trợ chuẩn hóa SIM",date:"2026-05-05",reactions:11,comments:0,shares:0,topic:"xác thực SIM"},
+{msg:"DÙNG SIM THỪA KẾ – XÁC THỰC CÓ KHÓ KHÔNG? MobiFone hỗ trợ",date:"2026-05-03",reactions:16,comments:0,shares:0,topic:"xác thực SIM"},
+{msg:"BIỆT ĐỘI MOBIFONE hỗ trợ học sinh CA Phường Thủ Đức đăng ký SIM định danh",date:"2026-05-07",reactions:17,comments:0,shares:1,topic:"xác thực SIM"},
+{msg:"YO! CÔNG THỨC LÀM THỦ TỤC HÀNH CHÍNH NHANH GỌN LẸ cùng smartphone",date:"2026-05-08",reactions:15,comments:0,shares:0,topic:"xác thực SIM"},
+{msg:"CHUẨN HÓA THÔNG TIN – MobiFone biệt đội về tận Phường/Xã hỗ trợ",date:"2026-05-09",reactions:20,comments:1,shares:1,topic:"xác thực SIM"},
+{msg:"BÍ KÍP ROAMING – Đăng ký Roaming mà vẫn không lo cước phát sinh",date:"2026-05-10",reactions:12,comments:0,shares:1,topic:"roaming"},
+{msg:"NÓNG MOBIFONE ĐỒNG LOẠT RA QUÂN TIẾP SỨC THÁNG CÔNG NHÂN 2026",date:"2026-05-11",reactions:17,comments:2,shares:1,topic:"cộng đồng"},
+{msg:"CHUẨN HÓA THÔNG TIN – 3 PHÚT XONG NGAY TRÊN APP MY MOBIFONE",date:"2026-05-12",reactions:20,comments:0,shares:4,topic:"xác thực SIM"},
+{msg:"ƯU ĐÃI ĐẶC BIỆT DÀNH CHO THUÊ BAO CHUẨN HOÁ THÔNG TIN TRÊN MY MOBIFONE",date:"2026-05-13",reactions:180,comments:19,shares:860,topic:"xác thực SIM"},
+{msg:"Thôi được rồi không giấu mọi người nữa – đây chính là chân dung thật Ad",date:"2026-05-14",reactions:19,comments:0,shares:1,topic:"khác"},
+{msg:"Tổng hợp các bước xác thực thông tin thuê bao trên My MobiFone/VNeID",date:"2026-05-14",reactions:32,comments:0,shares:34,topic:"xác thực SIM"},
+{msg:"TƯỞNG LÀ MỘT NHƯNG LẠI LÀ HAI – Phân biệt XÁC THỰC và XÁC NHẬN",date:"2026-05-06",reactions:19,comments:1,shares:6,topic:"xác thực SIM"},
+{msg:"M - Mở data không giới hạn cùng MobiFone Saigon gói 6FHCM và 12FHCM",date:"2026-05-15",reactions:9,comments:0,shares:1,topic:"gói cước"},
+{msg:"😤 ĐÃ BẢO LÀ NGỦ SỚM RỒI LẠI... lướt mạng mãi không dừng",date:"2026-05-16",reactions:9,comments:0,shares:0,topic:"khác"},
+{msg:"LÀM ĐỊNH DANH NGAY – NHẬN SIM LIỀN TAY gói KC90CC siêu ưu đãi",date:"2026-05-17",reactions:9,comments:0,shares:1,topic:"xác thực SIM"},
+// === Bài đăng hiện tại (28/05 – 17/06) ===
+{msg:"[MINIGAME] Siêu soi tìm điểm khác biệt – Chuẩn hóa gấp, nhận quà liền tay",date:"2026-05-28",reactions:965,comments:1151,shares:1153,topic:"minigame"},
+{msg:"📣 Không truy cập được VNeID? Giải pháp xác thực qua NFC",date:"2026-05-22",reactions:37,comments:2,shares:17,topic:"xác thực SIM"},
+{msg:"🎉 CÔNG BỐ KẾT QUẢ MINIGAME SIÊU SOI TÌM ĐIỂM KHÁC BIỆT!",date:"2026-06-08",reactions:14,comments:6,shares:4,topic:"minigame"},
+{msg:"🚨 MobiFone tăng cường hỗ trợ KH chưa hoàn thành xác thực thuê bao",date:"2026-06-16",reactions:20,comments:0,shares:1,topic:"xác thực SIM"},
+{msg:"🚨 Đã có VNeID – Liệu có cần xác thực SIM nữa không?",date:"2026-06-02",reactions:11,comments:0,shares:1,topic:"xác thực SIM"},
+{msg:"🌟 Hòa chung không khí Đại lễ Phật Đản – đội ngũ áo xanh MobiFone",date:"2026-05-31",reactions:9,comments:2,shares:1,topic:"cộng đồng"},
+{msg:"⚽ Hòa nhịp đam mê bóng đá – gói FIFA WORLD CUP VIP VTVgo",date:"2026-05-28",reactions:9,comments:0,shares:1,topic:"World Cup"},
+{msg:"😍 MobiFone đồng hành cùng sĩ tử mùa thi – tặng SIM định danh",date:"2026-05-27",reactions:11,comments:0,shares:0,topic:"cộng đồng"},
+{msg:"🎓 MOBIFONE ĐỒNG HÀNH CÙNG SĨ TỬ TIẾP SỨC MÙA THI 2026",date:"2026-06-12",reactions:12,comments:0,shares:0,topic:"cộng đồng"},
+{msg:"🏆 BẮT TRỌN MÙA WORLD CUP 2026 CÙNG MOBIFONE",date:"2026-06-06",reactions:11,comments:0,shares:0,topic:"World Cup"},
+{msg:"⏰ Đếm ngược 48 giờ: 15/06 là hạn cuối! Thuê bao chưa chuẩn hoá bị chặn",date:"2026-06-13",reactions:7,comments:0,shares:3,topic:"xác thực SIM"},
+{msg:"📢 Thanh toán cước Internet an toàn – chỉ dùng kênh chính thức",date:"2026-05-23",reactions:13,comments:0,shares:0,topic:"cảnh báo"},
+{msg:"💔 Dùng người ta bao lâu mà chưa cho danh phận – SIM chính chủ",date:"2026-05-26",reactions:13,comments:1,shares:0,topic:"xác thực SIM"},
+{msg:"🚀 Chuẩn hóa SIM siêu tốc cùng NFC! Không cần ra cửa hàng",date:"2026-06-05",reactions:10,comments:0,shares:5,topic:"xác thực SIM"},
+{msg:"🚨 Mốc 15/6 triển khai xử lý thuê bao chưa xác thực",date:"2026-06-07",reactions:10,comments:0,shares:1,topic:"xác thực SIM"},
+{msg:"📺 WORLD CUP 2026 – XEM TRỌN 104 TRẬN CHỈ TỪ 100K!",date:"2026-06-17",reactions:3,comments:0,shares:1,topic:"World Cup"},
+{msg:"XÁC THỰC LIỀN TAY – NHẬN NGAY ƯU ĐÃI nạp thẻ My MobiFone",date:"2026-06-17",reactions:1,comments:0,shares:1,topic:"xác thực SIM"},
+{msg:"📱 Hướng dẫn tự xác thực thông tin thuê bao trên App My MobiFone",date:"2026-06-15",reactions:5,comments:1,shares:4,topic:"xác thực SIM"},
+{msg:"💙 Gỡ rối Chuẩn hóa thông tin – MobiFone Saigon hỗ trợ",date:"2026-06-09",reactions:6,comments:0,shares:0,topic:"xác thực SIM"},
+{msg:"⚽️ Cập nhật Kết quả và lịch thi đấu World Cup 16-17/6",date:"2026-06-16",reactions:1,comments:1,shares:0,topic:"World Cup"},
+{msg:"NẮNG NÓNG THẾ NÀY Ở NHÀ CÀY PHIM CÙNG WIFI",date:"2026-06-14",reactions:4,comments:0,shares:0,topic:"internet"},
+{msg:"🎉 Không khí sôi động tại Booth MobiFone mùa World Cup!",date:"2026-06-13",reactions:2,comments:0,shares:1,topic:"World Cup"},
+{msg:"📱 SIM CỦA BẠN CÒN AN TOÀN KHÔNG? Hạn chót 15/6",date:"2026-06-11",reactions:2,comments:0,shares:0,topic:"xác thực SIM"},
+{msg:"🏆 SAVE NGAY – LỊCH CÀY VÒNG BẢNG THÁNG 6 WORLD CUP!",date:"2026-06-10",reactions:2,comments:0,shares:1,topic:"World Cup"},
+{msg:"🚨 Ét O Ét: Chỉ còn 6 ngày để chuẩn hóa thông tin!",date:"2026-06-09",reactions:1,comments:0,shares:0,topic:"xác thực SIM"},
+{msg:"🔥 Dẹp nỗi lo cạn data với BẠO CHÚA data MobiFone",date:"2026-06-04",reactions:4,comments:0,shares:1,topic:"gói cước"},
+{msg:"🏆 CHÁY CÙNG WORLD CUP – VI VU BẮC MỸ, KHÔNG LO MẤT MẠNG",date:"2026-06-03",reactions:4,comments:0,shares:1,topic:"World Cup"},
+{msg:"🔥 Say bye ngày hóng drama mà hết data",date:"2026-06-01",reactions:3,comments:0,shares:0,topic:"gói cước"},
+{msg:"⚽ CHÁY CÙNG WORLD CUP – MOBIFONE TẶNG ƯU ĐÃI 50%",date:"2026-06-01",reactions:5,comments:0,shares:0,topic:"World Cup"},
+{msg:"🍃 Cuối tuần ở nhà lướt mạng thả ga",date:"2026-05-30",reactions:5,comments:0,shares:0,topic:"gói cước"},
+{msg:"⚡ Trải nghiệm internet không dây đỉnh cao cùng Wifi MobiFone",date:"2026-05-29",reactions:8,comments:0,shares:2,topic:"internet"},
+{msg:"⚽ Chỉ bằng giá vài ly trà sữa – gói World Cup VIP VTVgo",date:"2026-05-25",reactions:12,comments:0,shares:1,topic:"World Cup"},
+{msg:"⚖️ FHCM VS C129: DATA hay GỌI?",date:"2026-05-24",reactions:6,comments:0,shares:1,topic:"gói cước"},
+{msg:"GÓI C129 – TRỢ LÝ SỐ TOÀN NĂNG CHO DÂN KINH DOANH",date:"2026-05-20",reactions:7,comments:1,shares:0,topic:"gói cước"},
+{msg:"😱 Nhiều người chỉ nhớ chuẩn hóa số chính, quên số phụ",date:"2026-05-19",reactions:7,comments:0,shares:1,topic:"xác thực SIM"},
+{msg:"❗ SOS: Đang chat dở với Crush mà điện thoại im lìm",date:"2026-05-19",reactions:6,comments:0,shares:0,topic:"gói cước"},
+{msg:"❗ Từ 22/5, MobiFone chặn liên lạc 1 chiều SIM chưa xác thực",date:"2026-05-21",reactions:6,comments:0,shares:0,topic:"xác thực SIM"},
+{msg:"✅ Khi thao tác trên My MobiFone, kiểm tra tránh giả mạo",date:"2026-05-21",reactions:7,comments:0,shares:0,topic:"cảnh báo"},
+{msg:"MOBIFONE TÌM KIẾM CÁN BỘ QUẢN LÝ",date:"2026-05-27",reactions:5,comments:0,shares:0,topic:"khác"}];
+
+// ===== UTILS =====
+const fmt=n=>{if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return ''+n};
+const topicClr={'xác thực SIM':'#1d4ed8','gói cước':'#059669','World Cup':'#d97706','minigame':'#7c3aed','cộng đồng':'#0891b2','internet':'#0ea5e9','cảnh báo':'#dc2626','phong thủy':'#db2777','roaming':'#06b6d4','khuyến mãi':'#f59e0b','chuyển mạng':'#8b5cf6','nội bộ':'#64748b','sim số đẹp':'#ec4899','thông báo':'#6b7280','khác':'#94a3b8'};
+const tc=t=>topicClr[t]||'#94a3b8';
+
+function cutDate(days){const d=new Date();d.setDate(d.getDate()-days);return d.toISOString().slice(0,10);}
+function filterD(arr,days,f='date'){const cut=cutDate(days);return arr.filter(x=>(x[f]||x.date||x.created||'')>=cut);}
+function sum(arr,k){return arr.reduce((s,x)=>s+(x[k]||0),0);}
+function topicMap(arr){const m={};arr.forEach(x=>{m[x.topic]=(m[x.topic]||0)+1;});return m;}
+
+let charts=[];
+function destroyAll(){charts.forEach(c=>{try{c.destroy();}catch(e){}});charts=[];}
+function mkChart(id,cfg){const c=new Chart(document.getElementById(id),cfg);charts.push(c);return c;}
+
+// ===== RENDER TIKTOK =====
+function renderTK(days){
+  const effectiveDays=Math.min(days,60);
+  const daily=filterD(TK_DAILY,effectiveDays);
+  const vids=filterD(TK_VIDEOS,effectiveDays);
+  const tkNote=days>60?`<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:7px 12px;font-size:11.5px;color:#92400e;margin-bottom:12px">⚠️ TikTok API chỉ cung cấp dữ liệu tối đa 60 ngày. Đang hiển thị 60 ngày gần nhất.</div>`:'';
+  const usedDays=effectiveDays;
+  const tv=sum(daily,'views'),tpv=sum(daily,'pv'),tl=sum(daily,'likes'),tc2=sum(daily,'comments'),ts=sum(daily,'shares'),tsv=sum(vids,'saves');
+  const sorted=[...vids].sort((a,b)=>b.views-a.views);
+  const top5=sorted.slice(0,5),worst5=sorted.slice(-5).reverse();
+  const tpMap={};vids.forEach(v=>{tpMap[v.topic]=(tpMap[v.topic]||0)+v.views;});
+  const hView=new Array(24).fill(0);vids.forEach(v=>{hView[v.hour_vn]+=v.views;});
+  const bestH=hView.indexOf(Math.max(...hView));
+
+  document.getElementById('app').innerHTML=`
+  <div class="main">
+    ${tkNote}
+    <div class="channel-pill"><span class="cdot tk"></span>TikTok MobiFone TP.HCM (@mobifonetp.hcm)</div>
+    <div class="info-bar"><span>📅 <strong>${usedDays} ngày gần nhất</strong></span><span>📹 <strong>${vids.length} video</strong> được đăng</span><span>📡 Nguồn: Windsor.ai TikTok Organic</span></div>
+    <div class="sec-title">📈 Tổng quan hiệu quả</div>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-lbl">Video đăng</div><div class="kpi-val">${vids.length}</div><div class="kpi-sub">bài trong ${days} ngày</div></div>
+      <div class="kpi g"><div class="kpi-lbl">Lượt xem video</div><div class="kpi-val">${fmt(tv)}</div><div class="kpi-sub">tổng cộng</div></div>
+      <div class="kpi o"><div class="kpi-lbl">Lượt xem hồ sơ</div><div class="kpi-val">${fmt(tpv)}</div><div class="kpi-sub">profile views</div></div>
+      <div class="kpi r"><div class="kpi-lbl">Lượt thích</div><div class="kpi-val">${fmt(tl)}</div><div class="kpi-sub">likes</div></div>
+      <div class="kpi p"><div class="kpi-lbl">Bình luận</div><div class="kpi-val">${fmt(tc2)}</div><div class="kpi-sub">comments</div></div>
+      <div class="kpi"><div class="kpi-lbl">Chia sẻ</div><div class="kpi-val">${fmt(ts)}</div><div class="kpi-sub">shares</div></div>
+      <div class="kpi t"><div class="kpi-lbl">Lưu video</div><div class="kpi-val">${fmt(tsv)}</div><div class="kpi-sub">saves</div></div>
+    </div>
+
+    <div class="sec-title">📊 Xu hướng theo ngày</div>
+    <div class="chart-row chart-row-1"><div class="card"><div class="card-title">Lượt xem video theo ngày</div><div class="chart-wrap"><canvas id="c_trend"></canvas></div></div></div>
+    <div class="chart-row chart-row-2">
+      <div class="card"><div class="card-title">Tương tác theo ngày (Likes · Comments · Shares)</div><div class="chart-wrap"><canvas id="c_eng"></canvas></div></div>
+      <div class="card"><div class="card-title">Phân bổ nội dung theo chủ đề (theo lượt xem)</div><div class="chart-wrap"><canvas id="c_topic"></canvas></div></div>
+    </div>
+
+    <div class="sec-title">🏆 Top 5 video tốt nhất & tệ nhất</div>
+    <div class="posts-grid">
+      <div class="card">
+        <div class="card-title" style="color:#059669">🏆 Top 5 video hiệu quả nhất (theo lượt xem)</div>
+        ${top5.map((v,i)=>`<div class="post-item"><div class="rank ${['g1','g2','g3','',''][i]}">${i+1}</div><div class="post-body"><div class="post-msg"><a href="${v.url}" target="_blank" style="color:inherit;text-decoration:none">${v.cap}</a></div><div class="post-meta">${v.date} · <span class="tag" style="background:${tc(v.topic)}18;color:${tc(v.topic)}">${v.topic}</span></div><div class="metrics"><span class="m v">👁 ${fmt(v.views)}</span><span class="m l">❤ ${fmt(v.likes)}</span><span class="m c">💬 ${v.comments}</span><span class="m s">↗ ${v.shares}</span><span class="m sv">🔖 ${v.saves}</span></div></div></div>`).join('')}
+      </div>
+      <div class="card">
+        <div class="card-title" style="color:#dc2626">⚠️ Top 5 video hiệu quả thấp nhất</div>
+        ${worst5.map((v,i)=>`<div class="post-item"><div class="rank">${i+1}</div><div class="post-body"><div class="post-msg"><a href="${v.url}" target="_blank" style="color:inherit;text-decoration:none">${v.cap}</a></div><div class="post-meta">${v.date} · <span class="tag" style="background:${tc(v.topic)}18;color:${tc(v.topic)}">${v.topic}</span></div><div class="metrics"><span class="m v">👁 ${fmt(v.views)}</span><span class="m l">❤ ${v.likes}</span><span class="m c">💬 ${v.comments}</span><span class="m s">↗ ${v.shares}</span></div></div></div>`).join('')}
+      </div>
+    </div>
+
+    <div class="sec-title">🕐 Phân tích khung giờ đăng bài (giờ Việt Nam, UTC+7)</div>
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-title">Tổng lượt xem theo khung giờ đăng – khung giờ vàng: <strong style="color:#1d4ed8">${bestH}h–${bestH+1}h</strong></div>
+      <div class="hour-grid" id="hgrid"></div>
+      <div class="h-labels">${Array.from({length:24},(_,i)=>`<div class="h-lbl">${i}h</div>`).join('')}</div>
+      <div class="dow-note">💡 Phân tích ${vids.length} video (${usedDays} ngày): Đăng 11h–19h VN đạt lượt xem cao nhất. Tránh đăng sau 22h hoặc trước 8h sáng. Video viral tháng 4 chủ yếu đăng khung 11h–17h.</div>
+    </div>
+
+    <div class="sec-title">💡 Nhận xét & Đề xuất chiến lược</div>
+    <div class="reco-card">
+      <div class="alert-bar">⚡ Top viral: "Đừng để bị khóa SIM sau 15/4" (12/04) đạt <strong>${fmt(sorted[0]?sorted[0].views:0)} views</strong> – chiếm ~${tv>0?Math.round((sorted[0]?sorted[0].views:0)/tv*100):0}% tổng lượt xem. Top 5 video viral đều thuộc chủ đề <strong>Xác thực SIM</strong>. Avg/video: <strong>${fmt(vids.length>0?Math.round(tv/vids.length):0)}</strong> views.</div>
+      <div class="reco-grid">
+        <div class="reco-item blue"><h4>🎬 Content Direction: "Thực hành" wins</h4><p>Video hướng dẫn thực tế (xác thực NFC, VNeID) đạt view cao hơn 10–50x so với video quảng cáo gói cước thuần túy. Ưu tiên content <strong>giải quyết vấn đề thực tế</strong> với storytelling cá nhân hóa.</p></div>
+        <div class="reco-item green"><h4>⏱ Video 15–30 giây có watchrate cao nhất</h4><p>Video dưới 25 giây (D10, Crush campaign) duy trì watchrate 15–20%. Video 90s+ (World Cup) chỉ đạt 1.3%. Khuyến nghị: <strong>hook mạnh trong 3 giây đầu</strong>, giữ video 15–30 giây.</p></div>
+        <div class="reco-item orange"><h4>🕐 Đăng 11h–15h VN để tận dụng FYP</h4><p>Khung 11h–15h (giờ VN) cho kết quả tốt nhất dựa trên phân tích ${vids.length} video. Tránh đăng sau 21h hoặc trước 8h sáng. Thử nghiệm thêm khung <strong>19h–20h</strong> cho content giải trí tối.</p></div>
+        <div class="reco-item purple"><h4>📈 Chủ đề đề xuất tháng tới</h4><p>(1) <strong>World Cup content</strong>: reaction video, live update dạng Duet/Stitch; (2) <strong>Gói cước creative</strong> format trending; (3) <strong>UGC/challenge</strong> để mở rộng organic reach sau peak xác thực SIM.</p></div>
+      </div>
+    </div>
+  </div>`;
+
+  requestAnimationFrame(()=>{
+    mkChart('c_trend',{type:'line',data:{labels:daily.map(x=>x.date.slice(5)),datasets:[{label:'Lượt xem',data:daily.map(x=>x.views),borderColor:'#1d4ed8',backgroundColor:'rgba(29,78,216,.07)',tension:.4,fill:true,pointRadius:2,pointHoverRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>fmt(v)}}}}});
+    mkChart('c_eng',{type:'bar',data:{labels:daily.map(x=>x.date.slice(5)),datasets:[{label:'Likes',data:daily.map(x=>x.likes),backgroundColor:'rgba(220,38,38,.7)',stack:'s'},{label:'Comments',data:daily.map(x=>x.comments),backgroundColor:'rgba(5,150,105,.7)',stack:'s'},{label:'Shares',data:daily.map(x=>x.shares),backgroundColor:'rgba(217,119,6,.7)',stack:'s'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:10}}}},scales:{x:{stacked:true,ticks:{maxRotation:45,font:{size:9}}},y:{stacked:true}}}});
+    mkChart('c_topic',{type:'doughnut',data:{labels:Object.keys(tpMap),datasets:[{data:Object.values(tpMap),backgroundColor:Object.keys(tpMap).map(t=>tc(t)),borderWidth:2,borderColor:'white'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10}}}}});
+    const mx=Math.max(...hView,1);
+    document.getElementById('hgrid').innerHTML=hView.map((v,h)=>`<div class="h-bar ${h===bestH?'best':v>0?'':'dim'}" style="height:${Math.max(4,(v/mx)*60)}px" title="${h}h VN: ${fmt(v)} views"></div>`).join('');
+  });
+}
+
+// ===== RENDER FACEBOOK =====
+function renderFB(posts,name,fans,days){
+  const filtered=filterD(posts,days);
+  filtered.forEach(p=>{p.engagement=(p.reactions||0)+(p.comments||0)+(p.shares||0);});
+  const tp=filtered.length,tr=sum(filtered,'reactions'),tc_=sum(filtered,'comments'),ts=sum(filtered,'shares'),te=sum(filtered,'engagement');
+  const avgE=tp>0?Math.round(te/tp):0;
+  const sorted=[...filtered].sort((a,b)=>b.engagement-a.engagement);
+  const top5=sorted.slice(0,5),worst5=sorted.slice(-5).reverse();
+  const tpMap={};filtered.forEach(p=>{tpMap[p.topic]=(tpMap[p.topic]||0)+p.engagement;});
+  const dowE=new Array(7).fill(0),dowN=new Array(7).fill(0);
+  filtered.forEach(p=>{const d=new Date(p.date).getDay();dowE[d]+=p.engagement;dowN[d]++;});
+  const dowAvg=dowE.map((v,i)=>dowN[i]>0?Math.round(v/dowN[i]):0);
+  const dowLbl=['CN','T2','T3','T4','T5','T6','T7'];
+  const minigameE=filtered.filter(p=>p.topic==='minigame').reduce((s,p)=>s+p.engagement,0);
+  const mpct=te>0?Math.round(minigameE/te*100):0;
+  // Daily engagement timeline
+  const dailyEngMap={};
+  filtered.forEach(p=>{dailyEngMap[p.date]=(dailyEngMap[p.date]||0)+p.engagement;});
+  const engDates=Object.keys(dailyEngMap).sort();
+  const engVals=engDates.map(d=>dailyEngMap[d]);
+  // Per-post sorted by date for scatter chart
+  const postsByDate=[...filtered].sort((a,b)=>a.date.localeCompare(b.date));
+  // Top posts by engagement for horizontal bar
+  const topPostBar=[...filtered].sort((a,b)=>b.engagement-a.engagement).slice(0,12);
+
+  document.getElementById('app').innerHTML=`
+  <div class="main">
+    <div class="channel-pill"><span class="cdot fb"></span>${name}</div>
+    <div class="info-bar"><span>📅 <strong>${days} ngày gần nhất</strong></span><span>👥 <strong>${fmt(fans)}</strong> người theo dõi</span><span>📡 Nguồn: Facebook Graph API qua Composio</span></div>
+
+    <div class="sec-title">📈 Tổng quan hiệu quả</div>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-lbl">Tổng bài đăng</div><div class="kpi-val">${tp}</div><div class="kpi-sub">trong ${days} ngày</div></div>
+      <div class="kpi g"><div class="kpi-lbl">Tổng Engagement</div><div class="kpi-val">${fmt(te)}</div><div class="kpi-sub">reactions+comments+shares</div></div>
+      <div class="kpi r"><div class="kpi-lbl">Tổng Reaction</div><div class="kpi-val">${fmt(tr)}</div><div class="kpi-sub">reactions</div></div>
+      <div class="kpi p"><div class="kpi-lbl">Tổng Comment</div><div class="kpi-val">${fmt(tc_)}</div><div class="kpi-sub">bình luận</div></div>
+      <div class="kpi o"><div class="kpi-lbl">Tổng Share</div><div class="kpi-val">${fmt(ts)}</div><div class="kpi-sub">chia sẻ</div></div>
+      <div class="kpi t"><div class="kpi-lbl">Avg Engagement</div><div class="kpi-val">${avgE}</div><div class="kpi-sub">trung bình/bài</div></div>
+    </div>
+
+    <div class="sec-title">📊 Phân tích nội dung & xu hướng</div>
+    <div class="chart-row chart-row-2">
+      <div class="card"><div class="card-title">Phân bổ chủ đề nội dung (theo engagement)</div><div class="chart-wrap"><canvas id="c_topic"></canvas></div></div>
+      <div class="card"><div class="card-title">Trung bình engagement theo thứ trong tuần</div><div class="chart-wrap"><canvas id="c_dow"></canvas></div></div>
+    </div>
+
+    <div class="sec-title">📈 Engagement theo ngày & từng bài đăng</div>
+    <div class="chart-row chart-row-1">
+      <div class="card"><div class="card-title">Tổng engagement theo ngày (${days} ngày gần nhất)</div><div class="chart-wrap"><canvas id="c_daily_eng"></canvas></div></div>
+    </div>
+    <div class="chart-row chart-row-1">
+      <div class="card"><div class="card-title">Top 12 bài đăng engagement cao nhất</div><div class="chart-wrap" style="height:310px"><canvas id="c_post_bar"></canvas></div></div>
+    </div>
+
+    <div class="sec-title">🏆 Top 5 bài đăng tốt nhất & tệ nhất</div>
+    <div class="posts-grid">
+      <div class="card">
+        <div class="card-title" style="color:#059669">🏆 Top 5 bài engagement cao nhất</div>
+        ${top5.map((p,i)=>`<div class="post-item"><div class="rank ${['g1','g2','g3','',''][i]}">${i+1}</div><div class="post-body"><div class="post-msg">${p.msg||'(Không có nội dung text)'}</div><div class="post-meta">${p.date} · <span class="tag" style="background:${tc(p.topic)}18;color:${tc(p.topic)}">${p.topic}</span></div><div class="metrics"><span class="m e">⚡ ${fmt(p.engagement)}</span><span class="m l">❤ ${fmt(p.reactions)}</span><span class="m c">💬 ${fmt(p.comments)}</span><span class="m s">↗ ${fmt(p.shares)}</span></div></div></div>`).join('')}
+      </div>
+      <div class="card">
+        <div class="card-title" style="color:#dc2626">⚠️ Top 5 bài engagement thấp nhất</div>
+        ${worst5.map((p,i)=>`<div class="post-item"><div class="rank">${i+1}</div><div class="post-body"><div class="post-msg">${p.msg||'(Không có nội dung text)'}</div><div class="post-meta">${p.date} · <span class="tag" style="background:${tc(p.topic)}18;color:${tc(p.topic)}">${p.topic}</span></div><div class="metrics"><span class="m e">⚡ ${p.engagement}</span><span class="m l">❤ ${p.reactions}</span><span class="m c">💬 ${p.comments}</span><span class="m s">↗ ${p.shares}</span></div></div></div>`).join('')}
+      </div>
+    </div>
+
+    <div class="sec-title">💡 Nhận xét & Đề xuất chiến lược</div>
+    <div class="reco-card">
+      <div class="alert-bar">⚡ Minigame chiếm <strong>${mpct}%</strong> tổng engagement dù chỉ 1–2 bài/tháng. Avg engagement thông thường: <strong>${avgE}</strong>/bài → khoảng cách rất lớn giữa bài viral và bài thường ngày.</div>
+      <div class="reco-grid">
+        <div class="reco-item blue"><h4>🎯 Nâng chất hơn tăng lượng</h4><p>Nhiều bài đăng có engagement <10, trong khi minigame đạt 1000–3000+. Cần <strong>giảm số bài, tăng đầu tư creative</strong>: hook caption mạnh, visual bắt mắt, CTA cụ thể trong mỗi bài.</p></div>
+        <div class="reco-item green"><h4>🎁 Minigame định kỳ mỗi 2 tuần</h4><p>Minigame tạo spike engagement cực lớn. Duy trì <strong>2 tuần/lần</strong> với giải thưởng hấp dẫn (data, SIM số đẹp, voucher). Minigame World Cup + dự đoán kết quả trận đấu rất phù hợp thời điểm này.</p></div>
+        <div class="reco-item orange"><h4>⚽ World Cup content real-time</h4><p>World Cup 2026 là cơ hội lớn nhưng engagement nội dung tĩnh khá thấp. Chuyển sang <strong>comment live</strong> trong giờ trận, dự đoán có thưởng, poll/vote để tăng tương tác tự nhiên.</p></div>
+        <div class="reco-item purple"><h4>📹 Cross-post video TikTok viral</h4><p>Video NFC viral 167K views trên TikTok – thử <strong>cross-post dạng Reels</strong> lên Facebook. Facebook đang ưu tiên phân phối Reels trong feed, có thể tăng reach đáng kể so với video thông thường.</p></div>
+      </div>
+    </div>
+  </div>`;
+
+  requestAnimationFrame(()=>{
+    mkChart('c_topic',{type:'doughnut',data:{labels:Object.keys(tpMap),datasets:[{data:Object.values(tpMap),backgroundColor:Object.keys(tpMap).map(t=>tc(t)),borderWidth:2,borderColor:'white'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10}}}}});
+    mkChart('c_dow',{type:'bar',data:{labels:dowLbl,datasets:[{label:'Avg Engagement',data:dowAvg,backgroundColor:dowAvg.map(v=>v>avgE?'#1d4ed8':'#bfdbfe')}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:v=>fmt(v)}}}}});
+    mkChart('c_daily_eng',{type:'line',data:{labels:engDates.map(d=>d.slice(5)),datasets:[{label:'Engagement',data:engVals,borderColor:'#1d4ed8',backgroundColor:'rgba(29,78,216,.08)',tension:.35,fill:true,pointRadius:engDates.length>20?2:4,pointHoverRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:([i])=>engDates[i.dataIndex]||'',label:c=>'Engagement: '+fmt(c.raw)}}},scales:{x:{ticks:{maxRotation:45,font:{size:9},maxTicksLimit:20}},y:{beginAtZero:true,ticks:{callback:v=>fmt(v)}}}}});
+    mkChart('c_post_bar',{type:'bar',indexAxis:'y',data:{labels:topPostBar.map(p=>(p.msg||'(no text)').slice(0,45)+(p.msg&&p.msg.length>45?'…':'')),datasets:[{label:'Engagement',data:topPostBar.map(p=>p.engagement),backgroundColor:topPostBar.map(p=>tc(p.topic)+'cc'),borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'⚡ '+fmt(c.raw)+' | '+topPostBar[c.dataIndex].date}}},scales:{x:{beginAtZero:true,ticks:{callback:v=>fmt(v)}},y:{ticks:{font:{size:10}}}}}});
+  });
+}
+
+// ===== MAIN =====
+function render(){
+  destroyAll();
+  const ch=document.getElementById('chSel').value;
+  const days=parseInt(document.getElementById('dSel').value);
+  if(ch==='tiktok') renderTK(days);
+  else if(ch==='fb_tphcm') renderFB(FB_TPHCM,'Fanpage MobiFone TP. Hồ Chí Minh',4264,days);
+  else renderFB(FB_SAIGON,'MobiFone Saigon',173792,days);
+}
+document.getElementById('chSel').addEventListener('change',render);
+document.getElementById('dSel').addEventListener('change',render);
+render();
+</script>
+</body>
+</html>
